@@ -1,0 +1,66 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
+  name: ttlresources.ttl.example.com
+spec:
+  group: ttl.example.com
+  names:
+    kind: TTLResource
+    listKind: TTLResourceList
+    plural: ttlresources
+    singular: ttlresource
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: TTLResource is the Schema for the ttlresources API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: TTLResourceSpec defines the desired state of TTLResource.
+            properties:
+              ttlSeconds:
+                type: integer
+            required:
+            - ttlSeconds
+            type: object
+          status:
+            description: TTLResourceStatus defines the observed state of TTLResource.
+            properties:
+              createdAt:
+                format: date-time
+                type: string
+              expired:
+                type: boolean
+              expiredAt:
+                format: date-time
+                type: string
+            required:
+            - createdAt
+            - expired
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

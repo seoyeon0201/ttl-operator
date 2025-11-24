@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- ttl_v1alpha1_ttlresource.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
