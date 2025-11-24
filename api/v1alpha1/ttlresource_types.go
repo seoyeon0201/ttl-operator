@@ -38,9 +38,9 @@ type TTLResourceSpec struct {
 type TTLResourceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	
-	Expired bool `json:"expired"` // TTL 시간이 만료되었는지 여부
-	CreatedAt metav1.Time  `json:"createdAt"` // 리소스가 실제로 생성된 시각
+
+	Expired   bool         `json:"expired"`             // TTL 시간이 만료되었는지 여부
+	CreatedAt metav1.Time  `json:"createdAt"`           // 리소스가 실제로 생성된 시각
 	ExpiredAt *metav1.Time `json:"expiredAt,omitempty"` // TTL 만료 시각
 }
 
