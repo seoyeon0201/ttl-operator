@@ -18,7 +18,10 @@ package controller
 
 import (
 	"context"
+	"time" //TTL 계산에 필요
 
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1" //metav1.Time 타입 사용
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,12 +49,70 @@ type TTLResourceReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
+
+// 기존 코드 !
+// func (r *TTLResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+// 	_ = logf.FromContext(ctx)
+
+// 	// TODO(user): your logic here
+
+//		return ctrl.Result{}, nil
+//	}
 func (r *TTLResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = logf.FromContext(ctx)
+	logger := logf.FromContext(ctx)
 
-	// TODO(user): your logic here
+	var ttlResource ttlv1alpha1.TTLResource
+	if err := r.Get(ctx, req.NamespacedName, &ttlResource); err != nil {
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
 
-	return ctrl.Result{}, nil
+	now := metav1.Now()
+
+	// 1. TTLSeconds가 0이면 삭제하지 않고 종료
+	if ttlResource.Spec.TTLSeconds == 0 {
+		return ctrl.Result{}, nil
+	}
+
+	// 2. 최초 Reconcile 시 CreatedAt 기록
+	if ttlResource.Status.CreatedAt.IsZero() {
+		ttlResource.Status.CreatedAt = ttlResource.ObjectMeta.CreationTimestamp
+		if err := r.Status().Update(ctx, &ttlResource); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	// 3. ExpiredAt 계산
+	if ttlResource.Status.ExpiredAt == nil {
+		expireTime := ttlResource.Status.CreatedAt.Add(time.Duration(ttlResource.Spec.TTLSeconds) * time.Second)
+		ttlResource.Status.ExpiredAt = &metav1.Time{Time: expireTime}
+		if err := r.Status().Update(ctx, &ttlResource); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	// 4. TTL 만료 확인 및 삭제
+	if !ttlResource.Status.Expired && now.Time.After(ttlResource.Status.ExpiredAt.Time) {
+		ttlResource.Status.Expired = true
+		if err := r.Status().Update(ctx, &ttlResource); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// TTL 만료 시 삭제
+		if err := r.Delete(ctx, &ttlResource); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		logger.Info("TTLResource expired and deleted", "name", ttlResource.Name)
+		return ctrl.Result{}, nil
+	}
+
+	// 5. TTL 만료 전, 남은 시간만큼 재큐잉
+	requeueAfter := ttlResource.Status.ExpiredAt.Time.Sub(now.Time)
+	return ctrl.Result{RequeueAfter: requeueAfter}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
