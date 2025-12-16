@@ -4,6 +4,6 @@ metadata:
   labels:
     app.kubernetes.io/name: ttl-operator
     app.kubernetes.io/managed-by: kustomize
-  name: ttlresource-sample
+  name: ttlresource-test
 spec:
-  ttlSeconds: 3600
+  ttlSeconds: 30

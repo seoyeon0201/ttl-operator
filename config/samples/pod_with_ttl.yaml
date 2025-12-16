@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod-sy
+  annotations:
+    ttl.example.com/ttl-seconds: "10"  # 10초 후 자동 삭제
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
