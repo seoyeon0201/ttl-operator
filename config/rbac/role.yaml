@@ -5,6 +5,25 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  verbs:
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
   - ttl.example.com
   resources:
   - ttlresources
@@ -16,12 +35,6 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - ttl.example.com
-  resources:
-  - ttlresources/finalizers
-  verbs:
-  - update
 - apiGroups:
   - ttl.example.com
   resources:
