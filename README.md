@@ -1,7 +1,8 @@
 # ttl-operator
 
-Kubernetes TTL Operator는 Kubernetes 리소스에 TTL(Time To Live) 기능을 제공하는 Operator입니다. 
-리소스 생성 후 지정된 시간이 지나면 자동으로 삭제됩니다.
+Kubernetes TTL Operator는 Kubernetes 리소스에 TTL(Time To Live) 기능을 제공하는 Operator
+
+리소스 생성 후 지정된 시간이 지나면 자동으로 삭제
 
 ## 기능
 
@@ -115,6 +116,37 @@ spec:
   ttlSeconds: 0  # 0으로 설정하면 삭제되지 않음
 ```
 
+### 실제 사용 코드
+
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod-sy
+  annotations:
+    ttl.example.com/ttl-seconds: "10"  # 10초 후 자동 삭제
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+```
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-sy
+  annotations:
+    ttl.example.com/ttl-seconds: "30"  # 30초 후 자동 삭제
+spec:
+  selector:
+    app: nginx
+  ports:
+  - port: 80
+    targetPort: 80
+```
+
 ## 핵심 파일 설명
 
 이 프로젝트의 주요 파일들과 역할을 설명합니다.
@@ -133,20 +165,6 @@ spec:
   - `createdAt`: 리소스 생성 시각
   - `expiredAt`: TTL 만료 시각
 
-- **TTLResource**: CRD의 메인 타입
-- **TTLResourceList**: 리소스 목록 조회용 타입
-
-```go
-type TTLResourceSpec struct {
-    TTLSeconds int `json:"ttlSeconds"`
-}
-
-type TTLResourceStatus struct {
-    Expired   bool         `json:"expired"`
-    CreatedAt metav1.Time  `json:"createdAt"`
-    ExpiredAt *metav1.Time `json:"expiredAt,omitempty"`
-}
-```
 
 ### 2. `internal/controller/ttlresource_controller.go`
 
@@ -154,27 +172,7 @@ type TTLResourceStatus struct {
 
 이 파일은 Operator의 핵심 비즈니스 로직을 구현합니다:
 
-- **Reconcile 함수**: Kubernetes의 reconciliation loop에서 호출되는 메인 로직
-  1. TTLResource 조회
-  2. `ttlSeconds`가 0이면 삭제하지 않고 종료
-  3. 최초 Reconcile 시 `CreatedAt` 기록
-  4. `ExpiredAt` 계산 및 업데이트
-  5. TTL 만료 확인 및 자동 삭제
-  6. 만료 전까지 남은 시간만큼 재큐잉
 
-- **SetupWithManager**: 컨트롤러를 Manager에 등록
-
-```go
-func (r *TTLResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-    // TTL 만료 확인 및 삭제 로직
-    if now.Time.After(ttlResource.Status.ExpiredAt.Time) {
-        // 리소스 삭제
-        return ctrl.Result{}, r.Delete(ctx, &ttlResource)
-    }
-    // 남은 시간만큼 재큐잉
-    return ctrl.Result{RequeueAfter: requeueAfter}, nil
-}
-```
 
 ### 3. `cmd/main.go`
 
@@ -189,28 +187,6 @@ func (r *TTLResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request)
   - 리더 선출(Leader Election) 설정
 - TTLResourceReconciler 등록
 - Manager 시작
-
-```go
-func main() {
-    // Scheme 설정
-    utilruntime.Must(ttlv1alpha1.AddToScheme(scheme))
-    
-    // Manager 생성
-    mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-        Scheme: scheme,
-        // ... 기타 설정
-    })
-    
-    // Controller 등록
-    (&controller.TTLResourceReconciler{
-        Client: mgr.GetClient(),
-        Scheme: mgr.GetScheme(),
-    }).SetupWithManager(mgr)
-    
-    // Manager 시작
-    mgr.Start(ctrl.SetupSignalHandler())
-}
-```
 
 ### 4. `config/crd/bases/ttl.example.com_ttlresources.yaml`
 
